@@ -138,7 +138,7 @@ class MelDataset(torch.utils.data.Dataset):
                               center=False)
 
           if self.evaluation:
-               np.save(filename.replace("wav","npy"), mel.detach().numpy())
+               np.save(filename.replace("wav","npy"), mel.repeat(3,1,1).permute(1,2,0).detach().numpy())
 
           return (mel.squeeze(), audio.squeeze(0), filename, int(label))
 
