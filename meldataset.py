@@ -7,6 +7,7 @@ import numpy as np
 from librosa.util import normalize
 from scipy.io.wavfile import read
 from librosa.filters import mel as librosa_mel_fn
+from specAugment import spec_augment_pytorch
 MAX_WAV_VALUE = 32768.0
 
 
@@ -136,6 +137,13 @@ class MelDataset(torch.utils.data.Dataset):
           mel = mel_spectrogram(audio, self.n_fft, self.num_mels,
                               self.sampling_rate, self.hop_size, self.win_size, self.fmin, self.fmax,
                               center=False)
+
+          mel = spec_augment_pytorch.spec_augment(mel_spectrogram=mel,
+               time_warping_para=80, 
+               frequency_masking_para=27,
+               time_masking_para=100, 
+               frequency_mask_num=1, 
+               time_mask_num=1)
 
           if self.evaluation:
                np.save(filename.replace("wav","npy"), mel.repeat(3,1,1).permute(1,2,0).detach().numpy())
