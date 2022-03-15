@@ -1,2 +1,4 @@
 Static/data/wav/*
 Static/data/npy/*
+Static/data/unseen/*
+Static/data_augment/*
