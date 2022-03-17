@@ -85,7 +85,7 @@ def get_dataset_filelist(a):
 class MelDataset(torch.utils.data.Dataset):
      def __init__(self, training_files, segment_size, n_fft, num_mels,
                     hop_size, win_size, sampling_rate,  fmin, fmax, split=True, shuffle=True, n_cache_reuse=1,
-                    device=None, fmax_loss=None, fine_tuning=False, base_mels_path=None, evaluation = False):
+                    device=None, fmax_loss=None, evaluation = False, train_unseen=False):
           self.audio_files = training_files
           random.seed(1234)
           if shuffle:
@@ -104,17 +104,15 @@ class MelDataset(torch.utils.data.Dataset):
           self.n_cache_reuse = n_cache_reuse
           self._cache_ref_count = 0
           self.device = device
-          self.fine_tuning = fine_tuning
-          self.base_mels_path = base_mels_path
           self.evaluation = evaluation
+          self.train_unseen = train_unseen
 
      def __getitem__(self, index):
           filename, label = self.audio_files[index]
           if self._cache_ref_count == 0:
                audio, sampling_rate = load_wav(filename)
                audio = audio / MAX_WAV_VALUE
-               if not self.fine_tuning:
-                    audio = normalize(audio) * 0.95
+               audio = normalize(audio) * 0.95
                self.cached_wav = audio
                if sampling_rate != self.sampling_rate:
                     raise ValueError("{} SR doesn't match target {} SR".format(
@@ -138,17 +136,22 @@ class MelDataset(torch.utils.data.Dataset):
                               self.sampling_rate, self.hop_size, self.win_size, self.fmin, self.fmax,
                               center=False)
 
-          mel = spec_augment_pytorch.spec_augment(mel_spectrogram=mel,
-               time_warping_para=80, 
-               frequency_masking_para=27,
-               time_masking_para=100, 
-               frequency_mask_num=1, 
-               time_mask_num=1)
+          # mel = spec_augment_pytorch.spec_augment(mel_spectrogram=mel[0],
+          #      time_warping_para=80, 
+          #      frequency_masking_para=27,
+          #      time_masking_para=100, 
+          #      frequency_mask_num=1, 
+          #      time_mask_num=1).unsqueeze(0)
 
           if self.evaluation:
                np.save(filename.replace("wav","npy"), mel.repeat(3,1,1).permute(1,2,0).detach().numpy())
 
-          return (mel.squeeze(), audio.squeeze(0), filename, int(label))
+          if self.train_unseen:
+               y = 0 if int(label) <= 4 else 1
+          else:
+               y = int(label)
+
+          return (mel.squeeze(), audio.squeeze(0), filename, y)
 
      def __len__(self):
           return len(self.audio_files)
